@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
 python-multipart
-faiss-cpu
+langchain-postgres
+psycopg[binary]
 groq
 langchain-groq
 langchain
@@ -12,3 +13,5 @@ langchain-google-genai
 pypdf
 python-dotenv
 google-genai
+rank_bm25
+cohere
