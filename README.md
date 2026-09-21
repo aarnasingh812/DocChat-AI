@@ -5,7 +5,7 @@ DocChat AI is an enterprise-grade, full-stack, modular RAG (Retrieval-Augmented 
 All generative answers are backed by precise, page-stamped source citations with real-time response latency metrics.
 
 ---
-
+<!--
 ## 🖥️ User Interface Preview
 
 ### 1. Welcome Screen (No Document Loaded)
@@ -18,6 +18,7 @@ All generative answers are backed by precise, page-stamped source citations with
 <img src="assets/chat_screen_2.png" width="100%" alt="DocChat AI Conversational Flow" />
 
 ---
+-->
 
 ## 🚀 Architectural Highlights
 
