@@ -6,6 +6,7 @@ __pycache__/
 backend/.env
 .env
 env/
+backend/env/
 venv/
 *.egg-info/
 
@@ -17,6 +18,8 @@ venv/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+# Vite internal cache files (vite.config.js.timestamp-*.mjs)
+frontend/vite.config.js.timestamp-*.mjs
 
 # OS
 .DS_Store

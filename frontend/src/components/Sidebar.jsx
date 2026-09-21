@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-
-const API = 'http://localhost:8000'
+import { API } from '../api'
 
 export default function Sidebar({ session, onUpload, onClear }) {
   const [dragging, setDragging] = useState(false)
@@ -68,7 +67,7 @@ export default function Sidebar({ session, onUpload, onClear }) {
           ref={inputRef}
           type="file"
           accept=".pdf"
-          onChange={(e) => handleFile(e.target.files[0])}
+          onChange={(e) => { setError(null); handleFile(e.target.files[0]) }}
           disabled={uploading}
           style={{ display: 'none' }}
         />

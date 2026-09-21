@@ -1,0 +1,22 @@
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: docchat_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       docchat
+      POSTGRES_USER:     docchat
+      POSTGRES_PASSWORD: docchat
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docchat -d docchat"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
