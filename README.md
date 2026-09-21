@@ -1,4 +1,4 @@
-# DocChat AI — RAG based Document Question-Answering System .
+# DocChat AI — RAG based Document Question-Answering System
 
 DocChat AI is an enterprise-grade RAG (Retrieval-Augmented Generation) document intelligence assistant. It enables users to upload PDF documents, automatically parse and structure their contents (including scanned pages via Gemini Vision OCR), index them using hybrid vector-and-keyword search, and engage in context-grounded conversational chat.
 
