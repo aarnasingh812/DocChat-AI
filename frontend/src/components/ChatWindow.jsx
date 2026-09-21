@@ -39,8 +39,8 @@ export default function ChatWindow({ messages, thinking }) {
 
   return (
     <div className="chat-window">
-      {messages.map((msg, i) => (
-        <MessageBubble key={i} msg={msg} />
+      {messages.map((msg) => (
+        <MessageBubble key={msg.id} msg={msg} />
       ))}
 
       {/* Typing indicator */}

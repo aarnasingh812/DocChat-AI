@@ -2,8 +2,7 @@ import { useState, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import ChatInput from './components/ChatInput'
-
-const API = 'http://localhost:8000'
+import { API } from './api'
 
 export default function App() {
   const [session, setSession]   = useState(null)   // { session_id, doc_name, pages, chunks }
@@ -36,7 +35,8 @@ export default function App() {
     setError(null)
 
     // Optimistic user message
-    setMessages(prev => [...prev, { role: 'user', content: question }])
+    const msgId = crypto.randomUUID()
+    setMessages(prev => [...prev, { id: msgId, role: 'user', content: question }])
     setThinking(true)
 
     try {
@@ -55,6 +55,7 @@ export default function App() {
       setMessages(prev => [
         ...prev,
         {
+          id:      crypto.randomUUID(),
           role:    'assistant',
           content: data.answer,
           sources: data.sources,
