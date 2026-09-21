@@ -1,0 +1,1 @@
+# DocChat AI — application package
