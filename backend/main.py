@@ -1,38 +1,3 @@
-"""
-main.py
-────────
-Application entry point.
-
-Responsibilities (only):
-- Create the FastAPI application instance.
-- Register startup lifecycle hooks (DB table init).
-- Mount CORS middleware.
-- Include the API router.
-
-All business logic, database helpers, pipeline stages, and schemas live
-under the ``app/`` package — see the module tree below.
-
-    app/
-    ├── config.py                 — env-var configuration
-    ├── embeddings.py             — GeminiEmbeddings
-    ├── database/
-    │   ├── connection.py         — get_db_conn()
-    │   ├── sessions.py           — sessions table CRUD
-    │   └── chunk_store.py        — session_chunks table CRUD
-    ├── services/
-    │   ├── llm.py                — LLM singleton (ChatGroq)
-    │   ├── vector_store.py       — PGVector singleton
-    │   └── reranker.py           — Cohere / passthrough reranker
-    ├── pipeline/
-    │   ├── ingest.py             — Stage 1: PDF → chunks → embed → store
-    │   ├── bm25_index.py         — Stage 2a: BM25 index cache
-    │   ├── retrieval.py          — Stage 2b: hybrid retrieve + RRF + rerank
-    │   ├── context.py            — Stage 3: small-to-big context expansion
-    │   └── generation.py         — Stage 4: prompt + LLM answer generation
-    └── api/
-        ├── schemas.py            — Pydantic request/response models
-        └── routes.py             — FastAPI route handlers
-"""
 
 import logging
 from contextlib import asynccontextmanager
