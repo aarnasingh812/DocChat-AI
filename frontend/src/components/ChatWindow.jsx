@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import MessageBubble from './MessageBubble'
 
-export default function ChatWindow({ messages, thinking }) {
+export default function ChatWindow({ messages, thinking, session, onSend }) {
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -10,29 +10,18 @@ export default function ChatWindow({ messages, thinking }) {
 
   if (messages.length === 0 && !thinking) {
     return (
-      <div className="chat-window welcome">
-        <div className="welcome-card">
-          <span className="welcome-icon">📄</span>
-          <h2>No document loaded yet</h2>
-          <p>
-            Upload a PDF in the sidebar to start an intelligent conversation
-            with your document.
-          </p>
-          <div className="welcome-steps">
-            <div className="welcome-step">
-              <div className="step-num">1</div>
-              Click <strong>&nbsp;Upload Document&nbsp;</strong> in the sidebar to choose a PDF.
-            </div>
-            <div className="welcome-step">
-              <div className="step-num">2</div>
-              Wait a moment while the document is embedded and indexed.
-            </div>
-            <div className="welcome-step">
-              <div className="step-num">3</div>
-              Type your question below and get instant, cited answers.
-            </div>
+      <div className="chat-window document-welcome">
+        <section className="document-ready" aria-labelledby="document-ready-title">
+          <span className="ready-label"><span className="privacy-dot" /> Document ready</span>
+          <h2 id="document-ready-title">Let’s explore your document</h2>
+          <p className="ready-filename">{session.doc_name}</p>
+          <p>Ask your first question below, or try one of these to get started.</p>
+          <div className="suggestion-list">
+            {['Summarize this document.', 'What are the key takeaways?', 'What are the most important details?'].map(question => (
+              <button key={question} className="suggestion-button" onClick={() => onSend(question)}>{question}<span aria-hidden="true">↗</span></button>
+            ))}
           </div>
-        </div>
+        </section>
       </div>
     )
   }

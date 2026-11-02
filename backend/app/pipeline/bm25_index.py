@@ -25,7 +25,6 @@ Public API
     invalidate_bm25_cache(session_id) -> None
 """
 
-import logging
 import re
 from collections import OrderedDict
 from threading import Lock
@@ -36,8 +35,6 @@ from rank_bm25 import BM25Okapi
 
 from app.database.chunk_store import load_session_chunks
 from chunking import contextualize
-
-logger = logging.getLogger("docchat.pipeline.bm25_index")
 
 # ── Cache configuration ───────────────────────────────────────────────────────
 

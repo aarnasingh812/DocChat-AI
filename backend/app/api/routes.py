@@ -19,7 +19,8 @@ DELETE /session/{session_id} — delete a session and its vectors
 import logging
 import uuid
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from app.api.auth import current_user, require_trusted_origin
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.schemas import (
@@ -27,14 +28,16 @@ from app.api.schemas import (
     ChatResponse,
     SessionInfoResponse,
     UploadResponse,
+    SessionHistoryResponse,
+    SessionDetailResponse,
 )
-from app.database.sessions import get_session, save_session, delete_session
+from app.database.sessions import get_session, save_session, delete_session, list_sessions, get_messages, save_turn
 from app.pipeline.ingest import build_vector_store, delete_session as delete_session_chunks
 from app.pipeline.generation import answer_question
 
 logger = logging.getLogger("docchat.api.routes")
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_trusted_origin)])
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -48,7 +51,7 @@ def health():
 # ── Upload ────────────────────────────────────────────────────────────────────
 
 @router.post("/upload", response_model=UploadResponse, tags=["Documents"])
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), user: dict = Depends(current_user)):
     """
     Upload a PDF, chunk it, embed the chunks, and create a new session.
 
@@ -74,7 +77,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process PDF: {exc}")
 
     try:
-        await run_in_threadpool(save_session, session_id, file.filename, pages, chunks)
+        await run_in_threadpool(save_session, session_id, file.filename, pages, chunks, user["id"])
     except Exception as exc:
         # Roll back orphaned vectors
         await run_in_threadpool(delete_session_chunks, session_id)
@@ -92,13 +95,13 @@ async def upload_pdf(file: UploadFile = File(...)):
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user: dict = Depends(current_user)):
     """
     Answer a question using the RAG pipeline for the given session.
 
     Returns the answer, a list of source citations, and the elapsed time.
     """
-    session = await run_in_threadpool(get_session, req.session_id)
+    session = await run_in_threadpool(get_session, req.session_id, user["id"])
     if session is None:
         raise HTTPException(
             status_code=404,
@@ -109,9 +112,18 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
     try:
-        result = await run_in_threadpool(answer_question, req.session_id, req.question)
+        history = await run_in_threadpool(get_messages, req.session_id, user["id"], 12)
+        result = await run_in_threadpool(answer_question, req.session_id, req.question, history)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"RAG error: {exc}")
+
+    try:
+        await run_in_threadpool(save_turn, req.session_id, user["id"], req.question, result)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    except Exception:
+        logger.exception("Failed to persist chat for session %s", req.session_id)
+        raise HTTPException(status_code=500, detail="Unable to save your conversation. Please try again.")
 
     return ChatResponse(
         answer=result["answer"],
@@ -123,24 +135,37 @@ async def chat(req: ChatRequest):
 
 # ── Session info ──────────────────────────────────────────────────────────────
 
+@router.get("/sessions", response_model=list[SessionHistoryResponse], tags=["Sessions"])
+async def session_history(user: dict = Depends(current_user)):
+    return await run_in_threadpool(list_sessions, user["id"])
+
+
+@router.get("/session/{session_id}/messages", response_model=SessionDetailResponse, tags=["Sessions"])
+async def session_messages(session_id: str, user: dict = Depends(current_user)):
+    session = await run_in_threadpool(get_session, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    messages = await run_in_threadpool(get_messages, session_id, user["id"])
+    return {**session, "messages": messages}
+
 @router.get("/session/{session_id}", response_model=SessionInfoResponse, tags=["Sessions"])
-async def get_session_info(session_id: str):
+async def get_session_info(session_id: str, user: dict = Depends(current_user)):
     """Fetch metadata for an existing session (document name, page count, etc.)."""
-    session = await run_in_threadpool(get_session, session_id)
+    session = await run_in_threadpool(get_session, session_id, user["id"])
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     return SessionInfoResponse(**session)
 
 
 @router.delete("/session/{session_id}", tags=["Sessions"])
-async def delete_session_endpoint(session_id: str):
+async def delete_session_endpoint(session_id: str, user: dict = Depends(current_user)):
     """
     Delete a session — removes all vectors from PGVector and all DB rows.
 
     Vectors are removed first; the session record is deleted last so a failed
     vector removal is recoverable by retrying the request.
     """
-    if await run_in_threadpool(get_session, session_id) is None:
+    if await run_in_threadpool(get_session, session_id, user["id"]) is None:
         raise HTTPException(status_code=404, detail="Session not found.")
 
     try:

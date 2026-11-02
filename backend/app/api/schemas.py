@@ -11,6 +11,7 @@ Keeping schemas in a dedicated file means:
 """
 
 from pydantic import BaseModel
+from datetime import datetime
 
 
 # ── Requests ──────────────────────────────────────────────────────────────────
@@ -41,9 +42,27 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    sources: list = []
+    elapsed: float | None = None
+    created_at: datetime
+
+
 class SessionInfoResponse(BaseModel):
     """Returned by ``GET /session/{session_id}``."""
     session_id: str
     doc_name:   str
     pages:      int
     chunks:     int
+
+
+class SessionHistoryResponse(SessionInfoResponse):
+    created_at: datetime
+    updated_at: datetime
+
+
+class SessionDetailResponse(SessionInfoResponse):
+    messages: list[MessageResponse]

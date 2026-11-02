@@ -35,14 +35,12 @@ The additional columns are added via ALTER TABLE ADD COLUMN IF NOT EXISTS so
 that existing deployments upgrade automatically on first startup.
 """
 
-import logging
 from threading import Lock
 from typing import List
 
 from app.database.connection import get_db_conn
 from chunking import Chunk
 
-logger = logging.getLogger("docchat.database.chunk_store")
 
 # Columns fetched when loading chunks for BM25 / context expansion.
 _ROW_COLUMNS = "chunk_id, section_id, seq, chunk_type, page_start, page_end, breadcrumb, page, text"

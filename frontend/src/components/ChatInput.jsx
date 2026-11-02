@@ -44,11 +44,8 @@ export default function ChatInput({ onSend, disabled }) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder={
-            disabled
-              ? 'Upload a PDF to start chatting…'
-              : 'Ask anything about your document… (Enter to send, Shift+Enter for newline)'
-          }
+          aria-label="Message this document"
+          placeholder="Ask anything about your document"
           id="chat-input"
         />
         <button
