@@ -25,7 +25,7 @@ History is saved for new exchanges after this update. Older messages that existe
 The workspace uses the dark blue theme, a dedicated history sidebar, and a centered message composer. Only the selected session's panel is shown. Its messages, loading state, errors, citations, and composer are isolated from other sessions; delayed responses from another session cannot appear in the current chat. Unsent drafts are cleared when switching panels. The layout adapts to smaller screens.
 
 ---
-
+<!--
 ## 🖥️ User Interface Preview
 
 These screenshots show an earlier UI version. The current workspace uses the centered upload flow and separate session panels described above.
@@ -40,6 +40,7 @@ These screenshots show an earlier UI version. The current workspace uses the cen
 <img src="assets/chat_screen_2.png" width="100%" alt="DocChat AI Conversational Flow" />
 
 ---
+-->
 
 ## 🚀 Architectural Highlights
 
