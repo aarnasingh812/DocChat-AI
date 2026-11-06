@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database.sessions import init_sessions_table
 from app.database.chunk_store import init_chunk_store
 from app.api.routes import router
+from app.api.auth import router as auth_router
+from app.database.auth import init_auth_tables
+from app.config import FRONTEND_ORIGINS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -15,7 +18,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
-logger = logging.getLogger("docchat.main")
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ logger = logging.getLogger("docchat.main")
 async def lifespan(app: FastAPI):
     """Run DB migrations on startup before accepting any requests."""
     init_sessions_table()   # sessions table (retries if DB isn't ready yet)
+    init_auth_tables()      # accounts, browser sessions, document ownership
     init_chunk_store()      # session_chunks table (idempotent DDL)
     yield
 
@@ -39,10 +42,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=FRONTEND_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router)
+app.include_router(auth_router)

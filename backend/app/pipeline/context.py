@@ -25,17 +25,13 @@ Public API
     expand_context(session_id, docs, window, max_chars) -> List[Document]
 """
 
-import logging
 from typing import List
 
 from langchain_core.documents import Document
 
 from app.config import CONTEXT_NEIGHBOR_WINDOW, CONTEXT_MAX_CHARS_PER_HIT
-from app.database.chunk_store import load_section_chunks, row_to_dict
+from app.database.chunk_store import load_section_chunks
 from chunking import contextualize
-
-logger = logging.getLogger("docchat.pipeline.context")
-
 
 def expand_context(
     session_id: str,

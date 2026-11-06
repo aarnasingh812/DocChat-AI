@@ -19,7 +19,6 @@ Public API
     hybrid_retrieve(session_id, query, k_final, k_candidates) -> List[Document]
 """
 
-import logging
 from typing import List
 
 from langchain_core.documents import Document
@@ -27,9 +26,6 @@ from langchain_core.documents import Document
 from app.pipeline.bm25_index import bm25_search
 from app.services.vector_store import get_vector_store
 from app.services.reranker import get_reranker
-
-logger = logging.getLogger("docchat.pipeline.retrieval")
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

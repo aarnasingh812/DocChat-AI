@@ -3,14 +3,9 @@ uvicorn[standard]
 python-multipart
 langchain-postgres
 psycopg[binary]
-groq
 langchain-groq
-langchain
+langchain-classic
 langchain-core
-langchain-text-splitters
-langchain-community
-langchain-google-genai
-pypdf
 python-dotenv
 google-genai
 rank_bm25

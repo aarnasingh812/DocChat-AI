@@ -1,146 +1,55 @@
-import { useState, useRef, useCallback } from 'react'
-import { API } from '../api'
+import { useMemo, useState } from 'react'
 
-export default function Sidebar({ session, onUpload, onClear }) {
-  const [dragging, setDragging] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState(null)
-  const inputRef = useRef(null)
+function historyGroup(timestamp) {
+  const date = new Date(timestamp)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (date >= today) return 'Today'
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date >= yesterday) return 'Yesterday'
+  const lastWeek = new Date(today)
+  lastWeek.setDate(lastWeek.getDate() - 7)
+  return date >= lastWeek ? 'Previous 7 days' : 'Earlier'
+}
 
-  const handleFile = useCallback(async (file) => {
-    if (!file) return
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Only PDF files are supported.')
-      return
-    }
-    setError(null)
-    setUploading(true)
-
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch(`${API}/upload`, { method: 'POST', body: form })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Upload failed.')
-      }
-      const data = await res.json()
-      onUpload(data)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setUploading(false)
-    }
-  }, [onUpload])
-
-  const onDrop = useCallback((e) => {
-    e.preventDefault()
-    setDragging(false)
-    const file = e.dataTransfer.files[0]
-    handleFile(file)
-  }, [handleFile])
-
-  const onDragOver = (e) => { e.preventDefault(); setDragging(true) }
-  const onDragLeave = () => setDragging(false)
+export default function Sidebar({ session, sessions, onSelect, onNew, busy, historyLoading, historyError, onRetryHistory }) {
+  const [search, setSearch] = useState('')
+  const groups = useMemo(() => {
+    const filtered = sessions.filter(item => item.doc_name.toLowerCase().includes(search.trim().toLowerCase()))
+    return ['Today', 'Yesterday', 'Previous 7 days', 'Earlier'].map(label => ({
+      label, items: filtered.filter(item => historyGroup(item.updated_at) === label),
+    })).filter(group => group.items.length)
+  }, [sessions, search])
 
   return (
     <aside className="sidebar">
-      {/* Brand */}
-      <div className="sidebar-brand">
-        <span className="sidebar-brand-icon">📄</span>
-        DocChat AI
-      </div>
-      
-
-      <div className="sidebar-divider" />
-
-      {/* Upload */}
-      <div className="sidebar-section-title">Upload Document</div>
-      <div
-        className={`drop-zone${dragging ? ' drag-over' : ''}`}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onClick={() => !uploading && inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf"
-          onChange={(e) => { setError(null); handleFile(e.target.files[0]) }}
-          disabled={uploading}
-          style={{ display: 'none' }}
-        />
-        <span className="drop-zone-icon">{uploading ? '⏳' : '📂'}</span>
-        <div className="drop-zone-text">
-          {uploading
-            ? 'Processing document…'
-            : (<><strong>Click to upload</strong> or drag & drop<br />PDF files only</>)
-          }
-        </div>
-      </div>
-
-      {/* Upload progress */}
-      {uploading && (
-        <div className="upload-progress">
-          <div className="progress-bar-track">
-            <div className="progress-bar-fill" style={{ width: '100%' }} />
-          </div>
-          <div className="progress-label">
-            <div className="spinner-xs" />
-            Embedding document chunks…
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div style={{ marginTop: 10, fontSize: '.75rem', color: 'var(--clr-error)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Doc info */}
-      {session && (
-        <>
-          <div className="sidebar-divider" />
-          <div className="sidebar-section-title">Document Info</div>
-          <div className="doc-card">
-            <div className="doc-card-name">
-              <span>📄</span>
-              {session.doc_name.length > 28
-                ? session.doc_name.slice(0, 28) + '…'
-                : session.doc_name}
-            </div>
-            <div className="doc-stats">
-              <div className="stat-box">
-                <div className="stat-box-val">{session.pages}</div>
-                <div className="stat-box-label">Pages</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-box-val">{session.chunks}</div>
-                <div className="stat-box-label">Chunks</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="status-ready" style={{ marginTop: 12 }}>
-            <span className="status-dot" />
-            Ready to chat
-          </div>
-        </>
-      )}
-
-      {/* Clear */}
-      {session && (
-        <>
-          <div className="sidebar-divider" />
-          <button className="btn-clear" onClick={onClear}>
-            🗑️ Clear Chat &amp; Reset
-          </button>
-        </>
-      )}
-
+      <div className="sidebar-brand"><span className="brand-mark" aria-hidden="true">D</span>DocChat<span className="brand-ai">AI</span></div>
+      <button className="new-chat-button" onClick={onNew} disabled={busy}><span aria-hidden="true">＋</span> New chat</button>
+      <div className="history-heading"><h2>Your conversations</h2><span>{sessions.length}</span></div>
+      <label className="history-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
+        <input type="search" aria-label="Search conversations" placeholder="Search chats…" value={search} onChange={e => setSearch(e.target.value)} />
+      </label>
+      <nav className="session-history" aria-label="Previous conversations">
+        {groups.map(group => <section className="history-group" key={group.label}>
+          <h3>{group.label}</h3>
+          {group.items.map(item => <button key={item.session_id}
+            className={`session-item${session?.session_id === item.session_id ? ' active' : ''}`}
+            aria-current={session?.session_id === item.session_id ? 'page' : undefined}
+            title={item.doc_name} disabled={busy}
+            onClick={() => onSelect(item)}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v5h4M9 12h6M9 16h4" /></svg>
+            <span className="session-details"><span className="session-name">{item.doc_name}</span>
+              <span className="session-date">{new Date(item.updated_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+            </span>
+          </button>)}
+        </section>)}
+        {historyLoading && <p className="history-empty" role="status">Loading history…</p>}
+        {!historyLoading && !groups.length && !historyError && <p className="history-empty">{search ? 'No conversations match your search.' : 'Your conversations will appear here after you upload a document.'}</p>}
+      </nav>
+      {historyError && <div className="history-error" role="alert"><p>{historyError}</p><button className="quiet-button" onClick={onRetryHistory} disabled={busy}>Retry history</button></div>}
+      <div className="sidebar-footer"><span className="privacy-dot" /> Your chats, just for you.</div>
     </aside>
   )
 }

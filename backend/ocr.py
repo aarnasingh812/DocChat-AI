@@ -102,26 +102,6 @@ class RateLimiter:
             self._sleep(start - now)
 
 
-class MemoryDailyBudget:
-    """Per-process daily request counter (resets at Pacific midnight)."""
-
-    def __init__(self, limit: int):
-        self._limit = limit
-        self._lock = threading.Lock()
-        self._day = None
-        self._used = 0
-
-    def acquire(self) -> bool:
-        today = datetime.now(_PACIFIC).date()
-        with self._lock:
-            if today != self._day:
-                self._day, self._used = today, 0
-            if self._used >= self._limit:
-                return False
-            self._used += 1
-            return True
-
-
 class PostgresDailyBudget:
     """
     Daily request counter shared by every worker/process, persisted in Postgres so a
@@ -167,14 +147,6 @@ class PostgresDailyBudget:
             ).fetchone()
             conn.commit()
         return row is not None
-
-    def used_today(self) -> int:
-        self._ensure_table()
-        day = datetime.now(_PACIFIC).date()
-        with self._get_conn() as conn:
-            row = conn.execute("SELECT requests FROM ocr_usage WHERE day = %s", (day,)).fetchone()
-        return row[0] if row else 0
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ERROR CLASSIFICATION

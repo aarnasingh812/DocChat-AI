@@ -1,113 +1,140 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Sidebar from './components/Sidebar'
-import ChatWindow from './components/ChatWindow'
-import ChatInput from './components/ChatInput'
-import { API } from './api'
+import ConversationPanel from './components/ConversationPanel'
+import NewChat from './components/NewChat'
+import { apiFetch } from './api'
+import AuthScreen from './components/AuthScreen'
 
 export default function App() {
-  const [session, setSession]   = useState(null)   // { session_id, doc_name, pages, chunks }
-  const [messages, setMessages] = useState([])
-  const [thinking, setThinking] = useState(false)
-  const [error, setError]       = useState(null)
+  const [user, setUser] = useState(null)
+  const [checking, setChecking] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [retry, setRetry] = useState(0)
 
-  // Called by Sidebar once upload succeeds
-  const handleUpload = useCallback((data) => {
-    setSession(data)
-    setMessages([])
+  useEffect(() => {
+    let active = true
+    const expire = () => setUser(null)
+    window.addEventListener('docchat:unauthorized', expire)
+    async function restore() {
+      setChecking(true)
+      setAuthError('')
+      try {
+        const response = await apiFetch('/auth/me')
+        if (response.status === 401) return
+        if (!response.ok) throw new Error('Unable to connect to your account. Please try again.')
+        const data = await response.json()
+        if (active) setUser(data)
+      } catch (err) {
+        if (active) setAuthError(err.message)
+      } finally {
+        if (active) setChecking(false)
+      }
+    }
+    restore()
+    return () => {
+      active = false
+      window.removeEventListener('docchat:unauthorized', expire)
+    }
+  }, [retry])
+
+  if (checking) return <main className="auth-page" role="status">Loading your workspace…</main>
+  if (authError) return <main className="auth-page"><div className="auth-card" role="alert">
+    <p>{authError}</p><button className="auth-submit" onClick={() => setRetry(value => value + 1)}>Try again</button>
+  </div></main>
+  if (!user) return <AuthScreen onAuthenticated={setUser} />
+  return <Workspace key={user.id} user={user} onLogout={() => setUser(null)} />
+}
+
+export function Workspace({ user, onLogout }) {
+  const [session, setSession] = useState(null)
+  const [sessions, setSessions] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [error, setError] = useState(null)
+  const mounted = useRef(false)
+  const historyRequest = useRef(0)
+  const busy = uploading || signingOut
+
+  const refreshHistory = useCallback(async () => {
+    const version = ++historyRequest.current
+    try {
+      const response = await apiFetch('/sessions')
+      if (!response.ok) throw new Error('Unable to load your chat history.')
+      const data = await response.json()
+      if (mounted.current && version === historyRequest.current) {
+        setSessions(data)
+        setHistoryError(null)
+      }
+    } catch (err) {
+      if (mounted.current && version === historyRequest.current) setHistoryError(err.message)
+    } finally {
+      if (mounted.current && version === historyRequest.current) setHistoryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    mounted.current = true
+    // Load sidebar history only. Every sign-in starts on the new-chat screen.
+    refreshHistory()
+    return () => { mounted.current = false; historyRequest.current += 1 }
+  }, [refreshHistory])
+
+  const handleNew = useCallback(() => {
+    setSession(null)
     setError(null)
   }, [])
 
-  // Clear chat + session
-  const handleClear = useCallback(async () => {
-    if (session?.session_id) {
-      try {
-        await fetch(`${API}/session/${session.session_id}`, { method: 'DELETE' })
-      } catch (_) { /* best-effort */ }
-    }
-    setSession(null)
-    setMessages([])
+  const handleUpload = useCallback((document) => {
+    setSession(document)
     setError(null)
-  }, [session])
+    refreshHistory()
+  }, [refreshHistory])
 
-  // Send a message through the RAG pipeline
-  const handleSend = useCallback(async (question) => {
-    if (!session?.session_id) return
+  const handleDelete = useCallback(async (document) => {
+    const response = await apiFetch(`/session/${document.session_id}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error('Unable to delete this conversation. Please try again.')
+    if (!mounted.current) return
+    setSessions(prev => prev.filter(item => item.session_id !== document.session_id))
+    setSession(current => current?.session_id === document.session_id ? null : current)
+    refreshHistory()
+  }, [refreshHistory])
+
+  async function signOut() {
+    setSigningOut(true)
     setError(null)
-
-    // Optimistic user message
-    const msgId = crypto.randomUUID()
-    setMessages(prev => [...prev, { id: msgId, role: 'user', content: question }])
-    setThinking(true)
-
     try {
-      const res = await fetch(`${API}/chat`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ session_id: session.session_id, question }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Chat request failed.')
-      }
-
-      const data = await res.json()
-      setMessages(prev => [
-        ...prev,
-        {
-          id:      crypto.randomUUID(),
-          role:    'assistant',
-          content: data.answer,
-          sources: data.sources,
-          elapsed: data.elapsed,
-        },
-      ])
-    } catch (e) {
-      setError(e.message)
-      // Remove the optimistic user bubble if the request failed
-      setMessages(prev => prev.slice(0, -1))
+      const response = await apiFetch('/auth/logout', { method: 'POST' })
+      if (!response.ok) throw new Error('Unable to sign out. Please try again.')
+      onLogout()
+    } catch (err) {
+      if (mounted.current) setError(err.message)
     } finally {
-      setThinking(false)
+      if (mounted.current) setSigningOut(false)
     }
-  }, [session])
+  }
 
   return (
     <>
-      <Sidebar
-        session={session}
-        onUpload={handleUpload}
-        onClear={handleClear}
-      />
-
+      <Sidebar session={session} sessions={sessions}
+        onSelect={document => { setSession(document); setError(null) }} onNew={handleNew}
+        busy={busy} historyLoading={historyLoading} historyError={historyError} onRetryHistory={refreshHistory} />
       <main className="main">
-        {/* Top bar */}
         <header className="topbar">
-          <div>
-            <div className="topbar-title">Chat with Your Doc</div>
-            <div className="topbar-sub">
-              {session
-                ? `Chatting with ${session.doc_name}`
-                : 'Upload a PDF in the sidebar to get started'}
-            </div>
+          <div className="conversation-title">
+            <span className="topbar-title">{session ? session.doc_name : 'New chat'}</span>
+            <span className="topbar-sub">DocChat AI</span>
           </div>
-          <div className="topbar-badge">DocChat AI</div>
+          <div className="account-controls">
+            <span className="account-name" title={user.email}>{user.name}</span>
+            <button className="quiet-button" onClick={signOut} disabled={busy}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
+          </div>
         </header>
-
-        {/* Error banner */}
-        {error && (
-          <div className="error-banner">
-            <span>⚠️</span> {error}
-          </div>
-        )}
-
-        {/* Chat area */}
-        <ChatWindow messages={messages} thinking={thinking} />
-
-        {/* Input */}
-        <ChatInput
-          onSend={handleSend}
-          disabled={!session || thinking}
-        />
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        {session
+          ? <ConversationPanel key={session.session_id} document={session} onActivity={refreshHistory} onDelete={handleDelete} disabled={busy} />
+          : <NewChat onUpload={handleUpload} busy={busy} onUploadingChange={setUploading} />}
       </main>
     </>
   )

@@ -62,3 +62,12 @@ CONTEXT_MAX_CHARS_PER_HIT: int = int(os.getenv("CONTEXT_MAX_CHARS_PER_HIT", "360
 # ── Vector store ──────────────────────────────────────────────────────────────
 
 VECTOR_COLLECTION: str = os.getenv("VECTOR_COLLECTION", "docchat_chunks")
+
+# Authentication: use HTTPS and secure cookies in production.
+AUTH_COOKIE_SECURE: bool = _env_bool("AUTH_COOKIE_SECURE", False)
+AUTH_SESSION_SECONDS: int = int(os.getenv("AUTH_SESSION_SECONDS", "604800"))
+FRONTEND_ORIGINS: list[str] = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    if origin.strip()
+]

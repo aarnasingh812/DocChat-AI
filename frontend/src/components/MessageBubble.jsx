@@ -9,7 +9,7 @@ export default function MessageBubble({ msg }) {
   return (
     <div className={`msg-row ${msg.role}`}>
       <div className="msg-avatar">
-        {isUser ? '🧑' : '🤖'}
+        {isUser ? 'You' : 'D'}
       </div>
 
       <div className="msg-content">

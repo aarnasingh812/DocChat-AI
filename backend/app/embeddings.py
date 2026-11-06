@@ -3,13 +3,8 @@ app/embeddings.py
 ─────────────────
 Custom LangChain-compatible embedding class backed by Google's GenAI API.
 
-Why a custom class?
-───────────────────
-The official `langchain-google-genai` package wraps the older `google-generativeai`
-SDK.  We use the newer `google-genai` SDK (``from google import genai``) for
-access to the latest models (e.g. gemini-embedding-001) and the cleaner v2 API.
-This thin wrapper makes GeminiEmbeddings a drop-in replacement for any
-LangChain ``Embeddings`` object.
+This adapter uses the Google GenAI SDK directly and implements LangChain's
+``Embeddings`` interface.
 """
 
 from typing import List
