@@ -50,7 +50,7 @@ def health():
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 
-@router.post("/upload", response_model=UploadResponse, tags=["Documents"])
+@router.post("/upload", response_model, tags=["Documents"])
 async def upload_pdf(file: UploadFile = File(...), user: dict = Depends(current_user)):
     """
     Upload a PDF, chunk it, embed the chunks, and create a new session.
