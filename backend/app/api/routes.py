@@ -50,7 +50,7 @@ def health():
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 
-@router.post("/upload", response_model, tags=["Documents"])
+@router.post("/upload", response_model=UploadResponse, tags=["Documents"])
 async def upload_pdf(file: UploadFile = File(...), user: dict = Depends(current_user)):
     """
     Upload a PDF, chunk it, embed the chunks, and create a new session.
@@ -94,7 +94,7 @@ async def upload_pdf(file: UploadFile = File(...), user: dict = Depends(current_
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
-@router.post("/chat", response_model=ChatResponse, tags=["Chat"])
+@router.post("/chat", response_model, tags=["Chat"])
 async def chat(req: ChatRequest, user: dict = Depends(current_user)):
     """
     Answer a question using the RAG pipeline for the given session.
